@@ -1,0 +1,19 @@
+name: Trigger submodule update in parent repo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  trigger-meta-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger update-submodules workflow in parent repo
+        env:
+          GH_TOKEN: ${{ secrets.BREVLY_REPO_TOKEN }}
+        run: |
+          gh workflow run update-submodules.yml \
+            --repo miguelriosoliveira/brev.ly \
+            --ref main
