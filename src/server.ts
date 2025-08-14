@@ -1,19 +1,21 @@
-import fastify from 'fastify';
+import { appBuilder } from './app.ts';
 import { env } from './env.ts';
 
-const server = fastify({ logger: true });
-
-server.get('/', () => {
-  return "I'm healthy";
+const app = appBuilder({
+  logger: {
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        translateTime: 'HH:MM:ss.l Z',
+        ignore: 'pid',
+      },
+    },
+  },
 });
 
-async function start() {
-  try {
-    await server.listen({ port: env.PORT });
-  } catch (err) {
-    server.log.error(err);
+app.listen({ port: env.PORT }, (err, _address) => {
+  if (err) {
+    app.log.error(err);
     process.exit(1);
   }
-}
-
-start();
+});
