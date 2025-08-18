@@ -8,18 +8,25 @@
   "packageManager": "pnpm@10.14.0",
   "type": "module",
   "scripts": {
-    "dev": "node --experimental-strip-types --watch src/server.ts",
-    "test": "node --test --watch"
+    "dev": "node --env-file-if-exists=.env --experimental-strip-types --watch src/server.ts",
+    "test": "node --test --watch",
+    "db:migrate": "drizzle-kit generate && drizzle-kit migrate",
+    "db:seed": "node --env-file-if-exists=.env --experimental-strip-types src/db/index.ts",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.4",
     "fastify": "^5.5.0",
+    "pg": "^8.16.3",
     "zod": "^4.0.17"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.2",
+    "@faker-js/faker": "^9.9.0",
     "@types/node": "^24.2.1",
+    "@types/pg": "^8.15.5",
     "drizzle-kit": "^0.31.4",
+    "drizzle-seed": "^0.3.1",
     "pino-pretty": "^13.1.1",
     "typescript": "^5.9.2",
     "ultracite": "5.1.2"

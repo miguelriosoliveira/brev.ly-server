@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: brevly_db
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
