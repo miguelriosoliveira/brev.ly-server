@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { reset } from 'drizzle-seed';
 import { env } from '../env.ts';
-// biome-ignore lint/performance/noNamespaceImport: need to whole db schema
+// biome-ignore lint/performance/noNamespaceImport: need the whole db schema
 import * as dbSchema from './schema.ts';
 
 const db = drizzle(env.DATABASE_URL);
