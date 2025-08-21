@@ -7,3 +7,7 @@ export const urlsTable = pgTable('urls', {
   access_count: integer().notNull().default(0),
   created_at: timestamp({ withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 });
+
+const dbSchema = { urlsTable };
+
+export default dbSchema;
