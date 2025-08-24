@@ -1,11 +1,16 @@
+import cors from '@fastify/cors';
 import fastify, { type FastifyServerOptions } from 'fastify';
-import { healthCheckRouter } from './routes/health-check.ts';
+import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
+import { env } from './env.ts';
 import { urlsRouter } from './routes/urls.ts';
 
 export function appBuilder(serverOptions?: FastifyServerOptions) {
   const app = fastify(serverOptions);
 
-  app.register(healthCheckRouter, { prefix: '/health' });
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
+
+  app.register(cors, { origin: [env.FRONTEND_URL] });
   app.register(urlsRouter, { prefix: '/urls' });
 
   return app;
