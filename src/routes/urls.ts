@@ -8,8 +8,30 @@ import { urlsTable } from '../db/schema.ts';
 import { ErrorCodes } from '../errors/error-codes.ts';
 
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const URL_SCHEMA = z.object({
+  id: z.uuid(),
+  original_url: z.url(),
+  short_url: z.string(),
+  access_count: z.number(),
+  created_at: z.date(),
+});
 
 export function urlsRouter(app: FastifyInstance) {
+  app
+    .withTypeProvider<ZodTypeProvider>()
+    .get(
+      '/',
+      { schema: { response: { [HttpStatus.HTTP_STATUS_OK]: z.array(URL_SCHEMA) } } },
+      async (_request, reply) => {
+        try {
+          return await db.select().from(urlsTable);
+        } catch (error) {
+          app.log.error(error, 'failed retrieving urls');
+          return reply.status(HttpStatus.HTTP_STATUS_INTERNAL_SERVER_ERROR).send();
+        }
+      },
+    );
+
   app.withTypeProvider<ZodTypeProvider>().post(
     '/',
     {
@@ -22,16 +44,8 @@ export function urlsRouter(app: FastifyInstance) {
             .regex(SLUG_REGEX, 'Informe uma URL minúscula e sem espaço/caracter especial.'),
         }),
         response: {
-          [HttpStatus.HTTP_STATUS_OK]: z.object({
-            id: z.uuid(),
-            original_url: z.url(),
-            short_url: z.string(),
-            access_count: z.number(),
-            created_at: z.date(),
-          }),
-          [HttpStatus.HTTP_STATUS_UNPROCESSABLE_ENTITY]: z.object({
-            error_code: z.string(),
-          }),
+          [HttpStatus.HTTP_STATUS_OK]: URL_SCHEMA,
+          [HttpStatus.HTTP_STATUS_UNPROCESSABLE_ENTITY]: z.object({ error_code: z.string() }),
         },
       },
     },

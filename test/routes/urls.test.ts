@@ -55,4 +55,19 @@ describe('urls router', () => {
     const body = response.json();
     expect(body).toEqual({ error_code: ErrorCodes.DUPLICATE_URL });
   });
+
+  it('should retrieve all urls', async () => {
+    await import('../../src/db/seed.ts');
+    const savedUrls = await db.select().from(urlsTable);
+
+    const response = await app.inject({ method: 'get', url: '/urls' });
+
+    const body = response.json();
+    const parsedUrls = savedUrls.map(url => ({
+      ...url,
+      created_at: url.created_at.toISOString(),
+    }));
+    expect(body).toHaveLength(10);
+    expect(body).toEqual(parsedUrls);
+  });
 });
