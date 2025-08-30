@@ -15,22 +15,40 @@ const URL_SCHEMA = z.object({
   access_count: z.number(),
   created_at: z.date(),
 });
+export const URL_PAGE_SCHEMA = z.object({
+  items: z.array(URL_SCHEMA),
+  page: z.number(),
+  total: z.number(),
+});
 
 export function urlsRouter(app: FastifyInstance) {
-  app
-    .withTypeProvider<ZodTypeProvider>()
-    .get(
-      '/',
-      { schema: { response: { [HttpStatus.HTTP_STATUS_OK]: z.array(URL_SCHEMA) } } },
-      async (_request, reply) => {
-        try {
-          return await db.select().from(urlsTable);
-        } catch (error) {
-          app.log.error(error, 'failed retrieving urls');
-          return reply.status(HttpStatus.HTTP_STATUS_INTERNAL_SERVER_ERROR).send();
-        }
+  app.withTypeProvider<ZodTypeProvider>().get(
+    '/',
+    {
+      schema: {
+        querystring: z.object({
+          page: z.coerce.number().min(1).default(1),
+          pageSize: z.coerce.number().min(1).default(10),
+        }),
+        response: { [HttpStatus.HTTP_STATUS_OK]: URL_PAGE_SCHEMA },
       },
-    );
+    },
+    async (request, reply) => {
+      try {
+        const { page, pageSize } = request.query;
+        const total = await db.$count(urlsTable);
+        const items = await db
+          .select()
+          .from(urlsTable)
+          .offset((page - 1) * pageSize)
+          .limit(pageSize);
+        return { items, page, total };
+      } catch (error) {
+        app.log.error(error, 'failed retrieving urls');
+        return reply.status(HttpStatus.HTTP_STATUS_INTERNAL_SERVER_ERROR).send();
+      }
+    },
+  );
 
   app.withTypeProvider<ZodTypeProvider>().post(
     '/',

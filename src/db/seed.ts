@@ -1,21 +1,19 @@
 import { faker } from '@faker-js/faker';
 import { reset } from 'drizzle-seed';
 import { db } from './index.ts';
-import dbSchema from './schema.ts';
+import dbSchema, { urlsTable } from './schema.ts';
 
-async function main() {
-  await reset(db, dbSchema);
-
-  const data: (typeof dbSchema.urlsTable.$inferInsert)[] = [];
-
-  for (let i = 0; i < 10; i++) {
-    data.push({
-      original_url: faker.internet.url(),
-      short_url: faker.internet.domainWord(),
-    });
+export async function seed(count: number) {
+  if (count <= 0) {
+    return;
   }
 
-  await db.insert(dbSchema.urlsTable).values(data);
-}
+  await reset(db, urlsTable);
 
-main();
+  const urls = Array.from({ length: count }, (): typeof dbSchema.urlsTable.$inferInsert => ({
+    original_url: faker.internet.url(),
+    short_url: faker.internet.domainWord(),
+  }));
+
+  await db.insert(dbSchema.urlsTable).values(urls);
+}
