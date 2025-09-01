@@ -1,5 +1,5 @@
 import { constants as HttpStatus } from 'node:http2';
-import { eq } from 'drizzle-orm';
+import { desc, eq, lte } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import z from 'zod';
@@ -9,7 +9,7 @@ import { ErrorCodes } from '../errors/error-codes.ts';
 
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const URL_SCHEMA = z.object({
-  id: z.uuid(),
+  id: z.uuidv7(),
   original_url: z.url(),
   short_url: z.string(),
   access_count: z.number(),
@@ -17,7 +17,7 @@ const URL_SCHEMA = z.object({
 });
 export const URL_PAGE_SCHEMA = z.object({
   items: z.array(URL_SCHEMA),
-  page: z.number(),
+  next_cursor: z.uuidv7().nullable(),
   total: z.number(),
 });
 
@@ -27,7 +27,7 @@ export function urlsRouter(app: FastifyInstance) {
     {
       schema: {
         querystring: z.object({
-          page: z.coerce.number().min(1).default(1),
+          cursor: z.uuidv7().optional(),
           pageSize: z.coerce.number().min(1).default(10),
         }),
         response: { [HttpStatus.HTTP_STATUS_OK]: URL_PAGE_SCHEMA },
@@ -35,14 +35,26 @@ export function urlsRouter(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const { page, pageSize } = request.query;
-        const total = await db.$count(urlsTable);
-        const items = await db
+        const { cursor, pageSize } = request.query;
+        const query = db
           .select()
           .from(urlsTable)
-          .offset((page - 1) * pageSize)
-          .limit(pageSize);
-        return { items, page, total };
+          .orderBy(desc(urlsTable.id))
+          .limit(pageSize + 1);
+        if (cursor) {
+          query.where(lte(urlsTable.id, cursor));
+        }
+
+        const items = await query;
+
+        let next_cursor: string | null = null;
+        if (items.length > pageSize) {
+          next_cursor = items.pop()?.id || null;
+        }
+
+        const total = await db.$count(urlsTable);
+
+        return { items, next_cursor, total };
       } catch (error) {
         app.log.error(error, 'failed retrieving urls');
         return reply.status(HttpStatus.HTTP_STATUS_INTERNAL_SERVER_ERROR).send();

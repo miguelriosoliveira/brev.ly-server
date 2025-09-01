@@ -8,6 +8,13 @@
       "when": 1755530322883,
       "tag": "0000_fancy_vapor",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1756761263057,
+      "tag": "0001_harsh_hobgoblin",
+      "breakpoints": true
     }
   ]
 }

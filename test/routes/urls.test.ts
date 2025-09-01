@@ -1,4 +1,5 @@
 import { constants as HttpStatus } from 'node:http2';
+import { desc, lte } from 'drizzle-orm';
 import { reset } from 'drizzle-seed';
 import type { FastifyInstance } from 'fastify';
 import type z from 'zod';
@@ -9,8 +10,7 @@ import { seed } from '../../src/db/seed.ts';
 import { ErrorCodes } from '../../src/errors/error-codes.ts';
 import type { URL_PAGE_SCHEMA } from '../../src/routes/urls.ts';
 
-const UUID_V1_TO_V5_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_V7_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 describe('urls router', () => {
   let app: FastifyInstance;
@@ -32,9 +32,9 @@ describe('urls router', () => {
     });
     const timeAfter = Date.now();
 
-    const body = response.json();
-    expect(body.id).toMatch(UUID_V1_TO_V5_REGEX);
-    const createdAt = new Date(body.created_at).getTime();
+    const responseBody = response.json();
+    expect(responseBody.id).toMatch(UUID_V7_REGEX);
+    const createdAt = new Date(responseBody.created_at).getTime();
     expect(createdAt).toBeGreaterThan(timeBefore);
     expect(createdAt).toBeLessThan(timeAfter);
   });
@@ -53,88 +53,78 @@ describe('urls router', () => {
 
   it('should retrieve 10-items page 1 of urls with default querystring', async () => {
     const total = 15;
-    const page = 1;
+    const pageSize = 10;
+    await seed(total);
+    const urlsPage = await db
+      .select()
+      .from(urlsTable)
+      .orderBy(desc(urlsTable.id))
+      .limit(pageSize + 1);
+    const last = urlsPage.pop();
+
+    const response = await app.inject().get('/urls');
+
+    const responseBody = response.json<z.infer<typeof URL_PAGE_SCHEMA>>();
+    const items = urlsPage.map(url => ({
+      ...url,
+      created_at: url.created_at.toISOString(),
+    }));
+    expect(responseBody.items).toHaveLength(pageSize);
+    expect(responseBody).toEqual({ items, next_cursor: last?.id, total });
+  });
+
+  it('should retrieve 10-items page 1 of urls setting querystring', async () => {
+    const total = 15;
+    const pageSize = 10;
+    await seed(total);
+    const urlsPage = await db
+      .select()
+      .from(urlsTable)
+      .orderBy(desc(urlsTable.id))
+      .limit(pageSize + 1);
+    const last = urlsPage.pop();
+
+    const response = await app.inject().get('/urls').query({
+      pageSize: pageSize.toString(),
+    });
+
+    const responseBody = response.json<z.infer<typeof URL_PAGE_SCHEMA>>();
+    const items = urlsPage.map(url => ({
+      ...url,
+      created_at: url.created_at.toISOString(),
+    }));
+    expect(responseBody.items).toHaveLength(pageSize);
+    expect(responseBody).toEqual({ items, next_cursor: last?.id, total });
+  });
+
+  it('should retrieve 5-items page 2 of urls', async () => {
+    const total = 15;
     const pageSize = 10;
     await seed(total);
     const page1 = await db
       .select()
       .from(urlsTable)
-      .offset((page - 1) * pageSize)
-      .limit(pageSize);
-
-    const response = await app.inject().get('/urls');
-
-    const body = response.json<z.infer<typeof URL_PAGE_SCHEMA>>();
-    const items = page1.map(url => ({
-      ...url,
-      created_at: url.created_at.toISOString(),
-    }));
-    expect(body.items).toHaveLength(pageSize);
-    expect(body).toEqual({ items, page, total });
-  });
-
-  it('should retrieve 10-items page 1 of urls setting querystring', async () => {
-    const total = 15;
-    const page = 1;
-    const pageSize = 10;
-    await seed(total);
-    const urlsPage = await db
+      .orderBy(desc(urlsTable.id))
+      .limit(pageSize + 1);
+    const cursor = page1.pop()?.id as string;
+    const page2 = await db
       .select()
       .from(urlsTable)
-      .offset((page - 1) * pageSize)
-      .limit(pageSize);
+      .where(lte(urlsTable.id, cursor))
+      .orderBy(desc(urlsTable.id))
+      .limit(pageSize + 1);
 
     const response = await app.inject().get('/urls').query({
-      page: page.toString(),
+      cursor,
       pageSize: pageSize.toString(),
     });
 
-    const body = response.json<z.infer<typeof URL_PAGE_SCHEMA>>();
-    const items = urlsPage.map(url => ({
+    const responseBody = response.json<z.infer<typeof URL_PAGE_SCHEMA>>();
+    const items = page2.map(url => ({
       ...url,
       created_at: url.created_at.toISOString(),
     }));
-    expect(body.items).toHaveLength(pageSize);
-    expect(body).toEqual({ items, page, total });
-  });
-
-  it('should retrieve 5-items page 2 of urls', async () => {
-    const total = 15;
-    const page = 2;
-    const pageSize = 10;
-    await seed(total);
-    const urlsPage = await db
-      .select()
-      .from(urlsTable)
-      .offset((page - 1) * pageSize)
-      .limit(pageSize);
-
-    const response = await app.inject().get('/urls').query({
-      page: page.toString(),
-      pageSize: pageSize.toString(),
-    });
-
-    const body = response.json<z.infer<typeof URL_PAGE_SCHEMA>>();
-    const items = urlsPage.map(url => ({
-      ...url,
-      created_at: url.created_at.toISOString(),
-    }));
-    expect(body.items).toHaveLength(total % pageSize);
-    expect(body).toEqual({ items, page, total });
-  });
-
-  it('should retrieve empty page 3 of urls', async () => {
-    const total = 15;
-    const page = 3;
-    const pageSize = 10;
-    await seed(total);
-
-    const response = await app.inject().get('/urls').query({
-      page: page.toString(),
-      pageSize: pageSize.toString(),
-    });
-
-    const body = response.json<z.infer<typeof URL_PAGE_SCHEMA>>();
-    expect(body).toEqual({ items: [], page, total });
+    expect(responseBody.items).toHaveLength(total % pageSize);
+    expect(responseBody).toEqual({ items, next_cursor: null, total });
   });
 });
