@@ -6,11 +6,11 @@ import dbSchema from './schema.ts';
 type UrlInsert = typeof dbSchema.urlsTable.$inferInsert;
 
 export async function seed(count: number) {
+  await reset(db, dbSchema);
+
   if (count <= 0) {
     return;
   }
-
-  await reset(db, dbSchema);
 
   const urls: UrlInsert[] = Array.from({ length: count }, () => ({
     original_url: faker.internet.url(),
