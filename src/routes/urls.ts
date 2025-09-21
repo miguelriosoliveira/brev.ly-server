@@ -5,7 +5,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import z from 'zod';
 import { db } from '../db/index.ts';
 import { urlsTable } from '../db/schema.ts';
-import { ErrorCodes } from '../errors/error-codes.ts';
+import { ERROR_SCHEMA, ErrorCodes } from '../errors/error-codes.ts';
 
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const URL_SCHEMA = z.object({
@@ -30,7 +30,10 @@ export function urlsRouter(app: FastifyInstance) {
           cursor: z.uuidv7().optional(),
           pageSize: z.coerce.number().min(1).default(10),
         }),
-        response: { [HttpStatus.HTTP_STATUS_OK]: URL_PAGE_SCHEMA },
+        response: {
+          [HttpStatus.HTTP_STATUS_OK]: URL_PAGE_SCHEMA,
+          [HttpStatus.HTTP_STATUS_INTERNAL_SERVER_ERROR]: ERROR_SCHEMA,
+        },
       },
     },
     async (request, reply) => {
@@ -57,7 +60,9 @@ export function urlsRouter(app: FastifyInstance) {
         return { items, next_cursor, total };
       } catch (error) {
         app.log.error(error, 'failed retrieving urls');
-        return reply.status(HttpStatus.HTTP_STATUS_INTERNAL_SERVER_ERROR).send();
+        return reply
+          .status(HttpStatus.HTTP_STATUS_INTERNAL_SERVER_ERROR)
+          .send({ error_code: ErrorCodes.SERVER_ERROR });
       }
     },
   );
