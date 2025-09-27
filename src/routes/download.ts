@@ -28,7 +28,7 @@ export function downloadsRouter(app: FastifyInstance) {
       try {
         const urls = await db.select().from(urlsTable).orderBy(desc(urlsTable.id));
 
-        const csv = ['id,original_url,short_url,access_count,created_at'];
+        const csv = ['ID,Original URL,Short URL,Access Count,Created At'];
         for (const url of urls) {
           const createdAt = new Date(url.created_at)
             .toISOString()

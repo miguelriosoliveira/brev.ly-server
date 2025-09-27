@@ -55,7 +55,7 @@ describe('urls router', () => {
       }),
     );
     const expectedBody = [
-      'id,original_url,short_url,access_count,created_at',
+      'ID,Original URL,Short URL,Access Count,Created At',
       [
         '00de6220-8400-767a-92e6-34fc196a0dde',
         'https://miguelrios.dev',
