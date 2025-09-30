@@ -8,7 +8,7 @@ import { db } from '../../src/db/index.ts';
 import dbSchema, { urlsTable } from '../../src/db/schema.ts';
 import { seed } from '../../src/db/seed.ts';
 import { ErrorCodes } from '../../src/errors/error-codes.ts';
-import type { URL_PAGE_SCHEMA } from '../../src/routes/urls.ts';
+import type { ORIGINAL_URL_SCHEMA, URL_PAGE_SCHEMA } from '../../src/routes/urls.ts';
 
 const UUID_V7_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -40,11 +40,14 @@ describe('urls router', () => {
   });
 
   it('should fail when saving duplicate url', async () => {
-    const original_url = 'http://example.com';
-    const short_url = 'ex';
-    await db.insert(urlsTable).values({ original_url, short_url });
+    const originalUrl = 'http://example.com';
+    const shortUrl = 'ex';
+    await db.insert(urlsTable).values({ original_url: originalUrl, short_url: shortUrl });
 
-    const response = await app.inject().post('/urls').body({ original_url, short_url });
+    const response = await app
+      .inject()
+      .post('/urls')
+      .body({ original_url: originalUrl, short_url: shortUrl });
 
     expect(response.statusCode).toBe(HttpStatus.HTTP_STATUS_UNPROCESSABLE_ENTITY);
     const body = response.json();
@@ -126,5 +129,16 @@ describe('urls router', () => {
     }));
     expect(responseBody.items).toHaveLength(total % pageSize);
     expect(responseBody).toEqual({ items, next_cursor: null, total });
+  });
+
+  it('should retrieve original url from short url', async () => {
+    const originalUrl = 'http://example.com';
+    const shortUrl = 'ex';
+    await db.insert(urlsTable).values({ original_url: originalUrl, short_url: shortUrl });
+
+    const response = await app.inject().get(`/urls/${shortUrl}`);
+
+    const responseBody = response.json<z.infer<typeof ORIGINAL_URL_SCHEMA>>();
+    expect(responseBody).toEqual({ original_url: originalUrl });
   });
 });

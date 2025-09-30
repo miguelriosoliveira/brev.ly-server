@@ -20,8 +20,43 @@ export const URL_PAGE_SCHEMA = z.object({
   next_cursor: z.uuidv7().nullable(),
   total: z.number(),
 });
+export const ORIGINAL_URL_SCHEMA = z.object({
+  original_url: URL_SCHEMA.shape.original_url,
+});
 
 export function urlsRouter(app: FastifyInstance) {
+  app.withTypeProvider<ZodTypeProvider>().get(
+    '/:shortUrl',
+    {
+      schema: {
+        params: z.object({
+          shortUrl: z
+            .string()
+            .regex(SLUG_REGEX, 'Informe uma URL minúscula e sem espaço/caracter especial.'),
+        }),
+        response: {
+          [HttpStatus.HTTP_STATUS_OK]: ORIGINAL_URL_SCHEMA,
+          [HttpStatus.HTTP_STATUS_INTERNAL_SERVER_ERROR]: ERROR_SCHEMA,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { shortUrl } = request.params;
+      try {
+        const items = await db.select().from(urlsTable).where(eq(urlsTable.short_url, shortUrl));
+        if (items.length === 0) {
+          throw ErrorCodes.URL_NOT_FOUND;
+        }
+        return { original_url: items.at(0)?.original_url };
+      } catch (error) {
+        app.log.error(error, `failed retrieving url "${shortUrl}"`);
+        return reply
+          .status(HttpStatus.HTTP_STATUS_NOT_FOUND)
+          .send({ error_code: ErrorCodes.URL_NOT_FOUND });
+      }
+    },
+  );
+
   app.withTypeProvider<ZodTypeProvider>().get(
     '/',
     {
@@ -50,14 +85,14 @@ export function urlsRouter(app: FastifyInstance) {
 
         const items = await query;
 
-        let next_cursor: string | null = null;
+        let nextCursor: string | null = null;
         if (items.length > pageSize) {
-          next_cursor = items.pop()?.id || null;
+          nextCursor = items.pop()?.id || null;
         }
 
         const total = await db.$count(urlsTable);
 
-        return { items, next_cursor, total };
+        return { items, next_cursor: nextCursor, total };
       } catch (error) {
         app.log.error(error, 'failed retrieving urls');
         return reply
@@ -80,7 +115,9 @@ export function urlsRouter(app: FastifyInstance) {
         }),
         response: {
           [HttpStatus.HTTP_STATUS_OK]: URL_SCHEMA,
-          [HttpStatus.HTTP_STATUS_UNPROCESSABLE_ENTITY]: z.object({ error_code: z.string() }),
+          [HttpStatus.HTTP_STATUS_UNPROCESSABLE_ENTITY]: z.object({
+            error_code: z.string(),
+          }),
         },
       },
     },

@@ -1,6 +1,7 @@
 import z from 'zod';
 
 export const ErrorCodes = {
+  URL_NOT_FOUND: 'URL_NOT_FOUND',
   DUPLICATE_URL: 'DUPLICATE_URL',
   SERVER_ERROR: 'SERVER_ERROR',
   UNKNOWN_ERROR: 'UNKNOWN_ERROR',
