@@ -141,4 +141,18 @@ describe('urls router', () => {
     const responseBody = response.json<z.infer<typeof ORIGINAL_URL_SCHEMA>>();
     expect(responseBody).toEqual({ original_url: originalUrl });
   });
+
+  it('should delete original url from short url', async () => {
+    const originalUrl = 'http://example.com';
+    const shortUrl = 'ex';
+    const [url] = await db
+      .insert(urlsTable)
+      .values({ original_url: originalUrl, short_url: shortUrl })
+      .returning({ id: urlsTable.id });
+
+    const response = await app.inject().delete(`/urls/${shortUrl}`);
+
+    const responseBody = response.json<z.infer<typeof ORIGINAL_URL_SCHEMA>>();
+    expect(responseBody).toEqual(url);
+  });
 });

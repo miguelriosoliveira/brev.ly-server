@@ -10,8 +10,11 @@ import { ERROR_SCHEMA, ErrorCodes } from '../errors/error-codes.ts';
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const URL_SCHEMA = z.object({
   id: z.uuidv7(),
-  original_url: z.url(),
-  short_url: z.string(),
+  original_url: z.url('Informe uma url válida.'),
+  short_url: z
+    .string()
+    .min(1, 'URL encurtada não pode estar vazia.')
+    .regex(SLUG_REGEX, 'Informe uma URL minúscula e sem espaço/caracter especial.'),
   access_count: z.number(),
   created_at: z.date(),
 });
@@ -29,11 +32,7 @@ export function urlsRouter(app: FastifyInstance) {
     '/:shortUrl',
     {
       schema: {
-        params: z.object({
-          shortUrl: z
-            .string()
-            .regex(SLUG_REGEX, 'Informe uma URL minúscula e sem espaço/caracter especial.'),
-        }),
+        params: z.object({ shortUrl: URL_SCHEMA.shape.short_url }),
         response: {
           [HttpStatus.HTTP_STATUS_OK]: ORIGINAL_URL_SCHEMA,
           [HttpStatus.HTTP_STATUS_INTERNAL_SERVER_ERROR]: ERROR_SCHEMA,
@@ -47,7 +46,7 @@ export function urlsRouter(app: FastifyInstance) {
         if (items.length === 0) {
           throw ErrorCodes.URL_NOT_FOUND;
         }
-        return { original_url: items.at(0)?.original_url };
+        return { original_url: items[0].original_url };
       } catch (error) {
         app.log.error(error, `failed retrieving url "${shortUrl}"`);
         return reply
@@ -107,17 +106,12 @@ export function urlsRouter(app: FastifyInstance) {
     {
       schema: {
         body: z.object({
-          original_url: z.url('Informe uma url válida.'),
-          short_url: z
-            .string()
-            .min(1, 'URL encurtada não pode estar vazia.')
-            .regex(SLUG_REGEX, 'Informe uma URL minúscula e sem espaço/caracter especial.'),
+          original_url: URL_SCHEMA.shape.original_url,
+          short_url: URL_SCHEMA.shape.short_url,
         }),
         response: {
           [HttpStatus.HTTP_STATUS_OK]: URL_SCHEMA,
-          [HttpStatus.HTTP_STATUS_UNPROCESSABLE_ENTITY]: z.object({
-            error_code: z.string(),
-          }),
+          [HttpStatus.HTTP_STATUS_UNPROCESSABLE_ENTITY]: ERROR_SCHEMA,
         },
       },
     },
@@ -133,6 +127,35 @@ export function urlsRouter(app: FastifyInstance) {
         return reply
           .status(HttpStatus.HTTP_STATUS_UNPROCESSABLE_ENTITY)
           .send({ error_code: ErrorCodes.DUPLICATE_URL });
+      }
+    },
+  );
+
+  app.withTypeProvider<ZodTypeProvider>().delete(
+    '/:shortUrl',
+    {
+      schema: {
+        params: z.object({ shortUrl: URL_SCHEMA.shape.short_url }),
+        response: {
+          [HttpStatus.HTTP_STATUS_OK]: z.object({ id: z.uuidv7() }),
+          [HttpStatus.HTTP_STATUS_UNPROCESSABLE_ENTITY]: ERROR_SCHEMA,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { shortUrl } = request.params;
+
+      try {
+        const [deleted] = await db
+          .delete(urlsTable)
+          .where(eq(urlsTable.short_url, shortUrl))
+          .returning({ id: urlsTable.id });
+        return deleted;
+      } catch (error) {
+        app.log.error(error, 'failed deleting url');
+        return reply
+          .status(HttpStatus.HTTP_STATUS_NOT_FOUND)
+          .send({ error_code: ErrorCodes.URL_NOT_FOUND });
       }
     },
   );
