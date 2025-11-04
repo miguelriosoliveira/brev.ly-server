@@ -23,9 +23,6 @@ export const URL_PAGE_SCHEMA = z.object({
   next_cursor: z.uuidv7().nullable(),
   total: z.number(),
 });
-export const ORIGINAL_URL_SCHEMA = z.object({
-  original_url: URL_SCHEMA.shape.original_url,
-});
 
 export function urlsRouter(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().get(
@@ -34,7 +31,7 @@ export function urlsRouter(app: FastifyInstance) {
       schema: {
         params: z.object({ shortUrl: URL_SCHEMA.shape.short_url }),
         response: {
-          [HttpStatus.HTTP_STATUS_OK]: ORIGINAL_URL_SCHEMA,
+          [HttpStatus.HTTP_STATUS_OK]: z.object({ original_url: URL_SCHEMA.shape.original_url }),
           [HttpStatus.HTTP_STATUS_INTERNAL_SERVER_ERROR]: ERROR_SCHEMA,
         },
       },

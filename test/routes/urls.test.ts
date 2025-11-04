@@ -1,5 +1,5 @@
 import { constants as HttpStatus } from 'node:http2';
-import { desc, lte } from 'drizzle-orm';
+import { desc, eq, lte } from 'drizzle-orm';
 import { reset } from 'drizzle-seed';
 import type { FastifyInstance } from 'fastify';
 import type z from 'zod';
@@ -8,7 +8,7 @@ import { db } from '../../src/db/index.ts';
 import dbSchema, { urlsTable } from '../../src/db/schema.ts';
 import { seed } from '../../src/db/seed.ts';
 import { ErrorCodes } from '../../src/errors/error-codes.ts';
-import type { ORIGINAL_URL_SCHEMA, URL_PAGE_SCHEMA } from '../../src/routes/urls.ts';
+import type { URL_PAGE_SCHEMA } from '../../src/routes/urls.ts';
 
 const UUID_V7_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -67,13 +67,11 @@ describe('urls router', () => {
 
     const response = await app.inject().get('/urls');
 
-    const responseBody = response.json<z.infer<typeof URL_PAGE_SCHEMA>>();
     const items = urlsPage.map(url => ({
       ...url,
       created_at: url.created_at.toISOString(),
     }));
-    expect(responseBody.items).toHaveLength(pageSize);
-    expect(responseBody).toEqual({ items, next_cursor: last?.id, total });
+    expect(response.json()).toEqual({ items, next_cursor: last?.id, total });
   });
 
   it('should retrieve 10-items page 1 of urls setting querystring', async () => {
@@ -138,8 +136,7 @@ describe('urls router', () => {
 
     const response = await app.inject().get(`/urls/${shortUrl}`);
 
-    const responseBody = response.json<z.infer<typeof ORIGINAL_URL_SCHEMA>>();
-    expect(responseBody).toEqual({ original_url: originalUrl });
+    expect(response.json()).toEqual({ original_url: originalUrl });
   });
 
   it('should delete original url from short url', async () => {
@@ -152,7 +149,8 @@ describe('urls router', () => {
 
     const response = await app.inject().delete(`/urls/${shortUrl}`);
 
-    const responseBody = response.json<z.infer<typeof ORIGINAL_URL_SCHEMA>>();
-    expect(responseBody).toEqual(url);
+    expect(response.json()).toEqual(url);
+    const deletedUrls = await db.select().from(urlsTable).where(eq(urlsTable.id, url.id));
+    expect(deletedUrls).toEqual([]);
   });
 });
