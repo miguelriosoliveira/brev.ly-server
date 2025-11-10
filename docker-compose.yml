@@ -1,9 +1,10 @@
 services:
+  app:
+    build: .
+    depends_on: [db]
   db:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: brevly_db
-    restart: unless-stopped
-    ports:
-      - '5432:5432'
+    image: bitnami/postgresql
+    environment:
+      POSTGRES_USER: brevly_user
+      POSTGRES_PASSWORD: brevly_password
+      POSTGRES_DB: brevly_db
