@@ -14,6 +14,7 @@ export function appBuilder(serverOptions?: FastifyServerOptions) {
   app.register(cors, {
     origin: [env.FRONTEND_URL],
     exposedHeaders: ['content-disposition'],
+    methods: ['GET', 'POST', 'DELETE'],
   });
   app.register(downloadsRouter, { prefix: '/downloads' });
   app.register(urlsRouter, { prefix: '/urls' });
