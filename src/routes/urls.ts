@@ -1,5 +1,5 @@
 import { constants as HttpStatus } from 'node:http2';
-import { desc, eq, lte } from 'drizzle-orm';
+import { desc, eq, lte, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import z from 'zod';
@@ -31,7 +31,10 @@ export function urlsRouter(app: FastifyInstance) {
       schema: {
         params: z.object({ shortUrl: URL_SCHEMA.shape.short_url }),
         response: {
-          [HttpStatus.HTTP_STATUS_OK]: z.object({ original_url: URL_SCHEMA.shape.original_url }),
+          [HttpStatus.HTTP_STATUS_OK]: z.object({
+            original_url: URL_SCHEMA.shape.original_url,
+            access_count: URL_SCHEMA.shape.access_count,
+          }),
           [HttpStatus.HTTP_STATUS_INTERNAL_SERVER_ERROR]: ERROR_SCHEMA,
         },
       },
@@ -39,11 +42,23 @@ export function urlsRouter(app: FastifyInstance) {
     async (request, reply) => {
       const { shortUrl } = request.params;
       try {
-        const items = await db.select().from(urlsTable).where(eq(urlsTable.short_url, shortUrl));
-        if (items.length === 0) {
+        const [updatedUrl] = await db
+          .update(urlsTable)
+          .set({ access_count: sql`${urlsTable.access_count} + 1` })
+          .where(eq(urlsTable.short_url, shortUrl))
+          .returning({
+            original_url: urlsTable.original_url,
+            access_count: urlsTable.access_count,
+          });
+
+        if (!updatedUrl) {
           throw ErrorCodes.URL_NOT_FOUND;
         }
-        return { original_url: items[0].original_url };
+
+        return {
+          original_url: updatedUrl.original_url,
+          access_count: updatedUrl.access_count,
+        };
       } catch (error) {
         app.log.error(error, `failed retrieving url "${shortUrl}"`);
         return reply

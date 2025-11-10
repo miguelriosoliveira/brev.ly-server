@@ -136,7 +136,7 @@ describe('urls router', () => {
 
     const response = await app.inject().get(`/urls/${shortUrl}`);
 
-    expect(response.json()).toEqual({ original_url: originalUrl });
+    expect(response.json()).toEqual({ original_url: originalUrl, access_count: 1 });
   });
 
   it('should delete original url from short url', async () => {
@@ -152,5 +152,33 @@ describe('urls router', () => {
     expect(response.json()).toEqual(url);
     const deletedUrls = await db.select().from(urlsTable).where(eq(urlsTable.id, url.id));
     expect(deletedUrls).toEqual([]);
+  });
+
+  it('should increase access count on successful url retrieval', async () => {
+    const originalUrl = 'http://example.com';
+    const shortUrl = 'ex';
+    await db.insert(urlsTable).values({ original_url: originalUrl, short_url: shortUrl });
+
+    await app.inject().get(`/urls/${shortUrl}`);
+    await app.inject().get(`/urls/${shortUrl}`);
+    const response = await app.inject().get(`/urls/${shortUrl}`);
+
+    expect(response.json()).toEqual({ original_url: originalUrl, access_count: 3 });
+  });
+
+  it('should not increase access count on failed url retrieval', async () => {
+    const originalUrl = 'http://example.com';
+    const shortUrl = 'ex';
+    await db.insert(urlsTable).values({ original_url: originalUrl, short_url: shortUrl });
+    const spy = vi.spyOn(db, 'update').mockImplementation(() => {
+      throw new Error('boom');
+    });
+
+    const response = await app.inject().get(`/urls/${shortUrl}`);
+
+    expect(response.statusCode).toBe(HttpStatus.HTTP_STATUS_NOT_FOUND);
+    const [url] = await db.select().from(urlsTable).where(eq(urlsTable.short_url, shortUrl));
+    expect(url.access_count).toBe(0);
+    spy.mockRestore();
   });
 });
