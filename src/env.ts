@@ -1,9 +1,8 @@
 import z from 'zod';
 
-const DEFAULT_PORT = 3000;
-
 const envSchema = z.object({
-  PORT: z.coerce.number().default(DEFAULT_PORT),
+  HOST: z.ipv4().default('0.0.0.0'),
+  PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.url({ protocol: /postgres/ }),
   FRONTEND_URL: z.url(),
 });

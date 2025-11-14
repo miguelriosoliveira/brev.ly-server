@@ -13,7 +13,7 @@ const app = appBuilder({
   },
 });
 
-app.listen({ port: env.PORT }, (err, _address) => {
+app.listen({ host: env.HOST, port: env.PORT }, (err, _address) => {
   if (err) {
     app.log.error(err);
     process.exit(1);
