@@ -1,18 +1,10 @@
 services:
   app:
     build: .
-    ports:
-      - '3000:3000'
     env_file: .env
-    environment:
-      # NODE_ENV: production
-      HOST: 0.0.0.0
-      PORT: 3000
-      DATABASE_URL: postgres://brevly_user:brevly_password@db:5432/brevly_db
     depends_on:
       db:
         condition: service_healthy
-    command: ['src/server.ts']
 
   db:
     image: bitnami/postgresql
