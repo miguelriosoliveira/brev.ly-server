@@ -1,10 +1,14 @@
 services:
   app:
-    build: .
-    env_file: .env
     depends_on:
       db:
         condition: service_healthy
+    build: .
+    ports:
+      - '3000:3000'
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://brevly_user:brevly_password@db:5432/brevly_db
 
   db:
     image: bitnami/postgresql

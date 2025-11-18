@@ -1,14 +1,13 @@
 # brev.ly-server
 
-API para encurtamento e redirecionamento de URLs construída com Fastify, Drizzle ORM e PostgreSQL. Inclui rotas para criar URLs curtas e realizar downloads/redirecionamentos, com validação via Zod e testes em Vitest.
+API para encurtamento e redirecionamento de URLs construída com Fastify, Drizzle ORM e PostgreSQL. Inclui rotas para criar URLs curtas, redirecionamentos e realizar downloads, com validação via Zod e testes em Vitest.
 
 ## Requisitos
 - Node.js 24.x (obrigatório para executar TypeScript nativamente)
 - pnpm
 - PostgreSQL (local) ou Docker/Docker Compose
 
-Dica: fixe o Node 24 localmente usando `nvm`.
-- nvm: `nvm install 24 && nvm use 24`
+Dica: fixe o Node 24 localmente com `nvm use` para instalar a versão indicada no arquivo `.nvmrc`.
 
 ## Configuração
 1. Crie um arquivo `.env` na raiz com, no mínimo:
@@ -30,17 +29,10 @@ Dica: fixe o Node 24 localmente usando `nvm`.
 ```bash
 pnpm dev
 ```
-- O servidor escuta em `HOST`/`PORT` (padrão `0.0.0.0:3000`).
+- O servidor escuta em `HOST:PORT` (padrão `0.0.0.0:3000`).
 - Certifique-se de que o PostgreSQL esteja acessível pelo `DATABASE_URL`.
 
-## Executar com Docker
-Imagem mínima com Node 24 distroless.
-```bash
-docker build -t brevly-server:local .
-docker run --rm -p 3000:3000 --env-file .env --name brevly brevly-server:local
-```
-
-## Executar com Docker Compose
+## Executar com Docker Compose (recomendado)
 ```bash
 docker compose up --build
 ```
