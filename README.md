@@ -32,7 +32,16 @@ Instale as dependências:
 pnpm install
 ```
 
-## Executar localmente (Node 24)
+## Executar localmente
+
+Ambiente que não suporta Node >=24 nativo para TS:
+
+```bash
+pnpm build
+pnpm start
+```
+
+Ambiente com Node 24+ (suporte a `--watch` e execução direta de TS):
 
 ```bash
 pnpm dev
@@ -48,3 +57,10 @@ docker compose up --build
 ```
 
 Variáveis de ambiente podem ser ajustadas no `docker-compose.yml` ou `.env`.
+
+## Scripts
+
+- `pnpm build`: compila para JS em `dist/`.
+- `pnpm start`: executa `dist/server.mjs`.
+- `pnpm dev`: executa TS diretamente com watch (node 24+).
+- `pnpm test`: roda testes (vitest).
